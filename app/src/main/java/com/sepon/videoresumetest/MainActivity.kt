@@ -39,7 +39,6 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    @RequiresApi(Build.VERSION_CODES.M)
     @SuppressLint("RestrictedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,15 +46,17 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         if (allPermissionsGranted()) {
-            lifecycleScope.launch(Dispatchers.IO) {
+         //   lifecycleScope.launch(Dispatchers.IO) {
 
                 startCamera()
-            }
+         //   }
         } else {
-            requestPermissions(
-                REQUIRED_PERMISSIONS,
-                REQUEST_CODE_PERMISSIONS
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestPermissions(
+                    REQUIRED_PERMISSIONS,
+                    REQUEST_CODE_PERMISSIONS
+                )
+            }
         }
 
         outputDirectory = getOutputDirectory()
@@ -68,9 +69,9 @@ class MainActivity : AppCompatActivity() {
                 it.isSelected = false
                 recording = false
             } else {
-                lifecycleScope.launch (Dispatchers.IO) {
+               // lifecycleScope.launch (Dispatchers.IO) {
                     recordVideo()
-                }
+               // }
 
                 it.isSelected = true
                 recording = true
@@ -173,17 +174,16 @@ class MainActivity : AppCompatActivity() {
                 val msg = "Video capture succeeded: ${file.absolutePath}"
 
                 Log.d(TAG, "Video saved in ${file.absolutePath}")
-                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
-//                binding.previewView.post {
-//                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
-//                }
+                binding.previewView.post {
+                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+                }
             }
 
             override fun onError(videoCaptureError: Int, message: String, cause: Throwable?) {
                 val msg = "Video capture failed: $message"
-                //binding.previewView.post {
+                binding.previewView.post {
                 Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
-                // }
+                 }
             }
         })
     }
@@ -227,7 +227,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val TAG = "MainActivity"
+        private const val TAG = "CameraX"
         private const val FILENAME = "yyyy-MM-dd-HH-mm-ss-SSS"
         private const val VIDEO_EXTENSION = ".mp4"
 
