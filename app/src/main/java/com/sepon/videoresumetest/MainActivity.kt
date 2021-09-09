@@ -1,0 +1,246 @@
+package com.sepon.videoresumetest
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.util.Log
+import android.view.KeyEvent
+import android.widget.Toast
+import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.*
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.sepon.videoresumetest.databinding.ActivityMainBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.Executors
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+    private val cameraExecutor = Executors.newSingleThreadExecutor()
+    private var imagePreview: Preview? = null
+    private var videoCapture: VideoCapture? = null
+    private lateinit var outputDirectory: File
+    private var cameraControl: CameraControl? = null
+    private var cameraInfo: CameraInfo? = null
+    private var linearZoom = 0f
+    private var recording = false
+
+
+
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    @SuppressLint("RestrictedApi")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        if (allPermissionsGranted()) {
+            lifecycleScope.launch(Dispatchers.IO) {
+
+                startCamera()
+            }
+        } else {
+            requestPermissions(
+                REQUIRED_PERMISSIONS,
+                REQUEST_CODE_PERMISSIONS
+            )
+        }
+
+        outputDirectory = getOutputDirectory()
+
+
+
+        binding.cameraCaptureButton.setOnClickListener {
+            if (recording) {
+                videoCapture?.stopRecording()
+                it.isSelected = false
+                recording = false
+            } else {
+                lifecycleScope.launch (Dispatchers.IO) {
+                    recordVideo()
+                }
+
+                it.isSelected = true
+                recording = true
+            }
+        }
+
+
+    }
+
+
+
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            if (allPermissionsGranted()) {
+                startCamera()
+            } else {
+                finish()
+            }
+        }
+    }
+
+    /**
+     * Check if all permission specified in the manifest have been granted
+     */
+    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
+        ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    @SuppressLint("RestrictedApi")
+    private fun startCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        val cameraSelector = CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build()
+        cameraProviderFuture.addListener({
+            imagePreview = Preview.Builder().apply {
+                setTargetAspectRatio(AspectRatio.RATIO_16_9)
+            }.build()
+
+
+
+            videoCapture = VideoCapture.Builder().apply {
+                setTargetAspectRatio(AspectRatio.RATIO_16_9)
+            }.build()
+
+            val cameraProvider = cameraProviderFuture.get()
+            val camera = cameraProvider.bindToLifecycle(
+                this,
+                cameraSelector,
+                imagePreview,
+                // imageAnalysis,
+                // imageCapture,
+                videoCapture
+            )
+            binding.previewView.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            imagePreview?.setSurfaceProvider(binding.previewView.surfaceProvider)
+            cameraControl = camera.cameraControl
+            cameraInfo = camera.cameraInfo
+            setZoomStateObserver()
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+
+
+    private fun setZoomStateObserver() {
+        cameraInfo?.zoomState?.observe(this, { state ->
+            // state.linearZoom
+            // state.zoomRatio
+            // state.maxZoomRatio
+            // state.minZoomRatio
+            Log.d(TAG, "${state.linearZoom}")
+        })
+    }
+
+
+
+
+    @SuppressLint("RestrictedApi")
+    private fun recordVideo() {
+        val file = createFile(
+            outputDirectory,
+            FILENAME,
+            VIDEO_EXTENSION
+        )
+        val outputFileOptions = VideoCapture.OutputFileOptions.Builder(file).build()
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            return
+        }
+        videoCapture?.startRecording(outputFileOptions, cameraExecutor, object : VideoCapture.OnVideoSavedCallback {
+            override fun onVideoSaved(outputFileResults: VideoCapture.OutputFileResults) {
+                val msg = "Video capture succeeded: ${file.absolutePath}"
+
+                Log.d(TAG, "Video saved in ${file.absolutePath}")
+                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+//                binding.previewView.post {
+//                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+//                }
+            }
+
+            override fun onError(videoCaptureError: Int, message: String, cause: Throwable?) {
+                val msg = "Video capture failed: $message"
+                //binding.previewView.post {
+                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+                // }
+            }
+        })
+    }
+
+
+
+    // Manage camera Zoom
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                if (linearZoom <= 0.9) {
+                    linearZoom += 0.1f
+                }
+                cameraControl?.setLinearZoom(linearZoom)
+                true
+            }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                if (linearZoom >= 0.1) {
+                    linearZoom -= 0.1f
+                }
+                cameraControl?.setLinearZoom(linearZoom)
+                true
+            }
+            else -> super.onKeyDown(keyCode, event)
+        }
+    }
+
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor.shutdown()
+    }
+
+    private fun getOutputDirectory(): File {
+        // TODO: 29/01/2021 Remove externalMediaDirs (deprecated)
+        val mediaDir = externalMediaDirs.firstOrNull()?.let {
+            File(it, "file").apply { mkdirs() }
+        }
+        return if (mediaDir != null && mediaDir.exists())
+            mediaDir else filesDir
+    }
+
+    companion object {
+        private const val TAG = "MainActivity"
+        private const val FILENAME = "yyyy-MM-dd-HH-mm-ss-SSS"
+        private const val VIDEO_EXTENSION = ".mp4"
+
+        private const val REQUEST_CODE_PERMISSIONS = 10
+        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+
+
+        fun createFile(baseFolder: File, format: String, extension: String) =
+            File(
+                baseFolder, SimpleDateFormat(format, Locale.US)
+                    .format(System.currentTimeMillis()) + extension
+            )
+    }
+
+
+}
