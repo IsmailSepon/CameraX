@@ -41,6 +41,15 @@ import androidx.annotation.RequiresApi
 import android.R.attr.data
 
 import android.app.Activity
+import android.net.Uri
+import android.widget.MediaController
+import android.widget.VideoView
+import android.content.pm.ActivityInfo
+
+import android.media.MediaRecorder
+
+
+
 
 
 
@@ -58,16 +67,8 @@ class MainActivity : AppCompatActivity() {
     private var linearZoom = 0f
     private var recording = false
     var sdk = 0
-
-    protected val outputDirectory2: String by lazy {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            "${Environment.DIRECTORY_DCIM}/CameraXDemo/"
-        } else {
-            "${this.getExternalFilesDir(Environment.DIRECTORY_DCIM)}/CameraXDemo/"
-        }
-    }
-
-
+    private val VIDEO_CAPTURE = 101
+    var videoUri: Uri? = null
 
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -100,27 +101,29 @@ class MainActivity : AppCompatActivity() {
 
         binding.cameraCaptureButton.setOnClickListener {
 
-            if (sdk > 23){
-                if (recording) {
-                    videoCapture?.stopRecording()
-                    it.isSelected = false
-                    recording = false
-                } else {
-                    lifecycleScope.launch (Dispatchers.IO) {
-                        recordVideo()
-                    }
+            dispatchTakeVideoIntent()
 
-                    it.isSelected = true
-                    recording = true
-                }
-            }else{
-
-                Toast.makeText(this@MainActivity, "Old Device!", Toast.LENGTH_SHORT).show()
-                val takeVideoIntent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
-                takeVideoIntent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 30)
-
-                startActivityForResult(this, takeVideoIntent, 101, null)
-            }
+//            if (sdk > 23){
+//
+//
+//                if (recording) {
+//                    videoCapture?.stopRecording()
+//                    it.isSelected = false
+//                    recording = false
+//                } else {
+//                    lifecycleScope.launch (Dispatchers.IO) {
+//                        recordVideo()
+//                    }
+//
+//                    it.isSelected = true
+//                    recording = true
+//                }
+//
+//            }else{
+//
+//                Toast.makeText(this@MainActivity, "Old Device!", Toast.LENGTH_SHORT).show()
+//               startRecordingVideo()
+//            }
 
 
         }
@@ -128,6 +131,38 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+
+    private fun dispatchTakeVideoIntent() {
+
+
+
+
+//        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takeVideoIntent ->
+//            takeVideoIntent.resolveActivity(packageManager)?.also {
+//                startActivityForResult(takeVideoIntent, Companion.REQUEST_VIDEO_CAPTURE)
+//            }
+//        }
+    }
+
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == Companion.REQUEST_VIDEO_CAPTURE && resultCode == RESULT_OK) {
+            Toast.makeText(this, "DOne", Toast.LENGTH_SHORT).show()
+//            val videoUri: Uri = intent.data
+//            videoView.setVideoURI(videoUri)
+        }
+    }
+
+
+//    override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent) {
+//        super.onActivityResult(requestCode, resultCode, intent)
+//        if (requestCode == REQUEST_VIDEO_CAPTURE && resultCode == RESULT_OK) {
+////            val videoUri: Uri = intent.data
+////            videoView.setVideoURI(videoUri)
+//        }
+//    }
 
     override fun onActivityReenter(resultCode: Int, data: Intent?) {
         super.onActivityReenter(resultCode, data)
@@ -282,6 +317,33 @@ class MainActivity : AppCompatActivity() {
             mediaDir else filesDir
     }
 
+
+
+
+    fun playbackRecordedVideo() {
+//        val mVideoView = findViewById<View>(R.id.video_view) as VideoView
+//        mVideoView.setVideoURI(videoUri)
+//        mVideoView.setMediaController(MediaController(this))
+//        mVideoView.requestFocus()
+//        mVideoView.start()
+    }
+
+    fun startRecordingVideo() {
+
+        if (packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            val intent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
+            val mediaFile = File(
+                Environment.getExternalStorageDirectory().absolutePath + "/myvideo.mp4"
+            )
+            videoUri = Uri.fromFile(mediaFile)
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, videoUri)
+            startActivityForResult(intent, VIDEO_CAPTURE)
+        } else {
+            Toast.makeText(this, "No camera on device", Toast.LENGTH_LONG).show()
+        }
+
+    }
+
     companion object {
         private const val TAG = "CameraX"
         private const val FILENAME = "yyyy-MM-dd-HH-mm-ss-SSS"
@@ -297,13 +359,10 @@ class MainActivity : AppCompatActivity() {
                 baseFolder, SimpleDateFormat(format, Locale.US)
                     .format(System.currentTimeMillis()) + extension
             )
+
+        const val REQUEST_VIDEO_CAPTURE = 1
     }
 
 
-    fun Context.mainExecutor(): Executor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        mainExecutor
-    } else {
-        MainExecutor()
-    }
 
 }
