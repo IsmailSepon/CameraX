@@ -2,13 +2,17 @@ package com.sepon.videoresumetest
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ContentValues
+import android.content.ContentValues.TAG
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -20,9 +24,27 @@ import com.sepon.videoresumetest.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
+import java.nio.file.Files.createFile
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import android.R
+import android.R.attr
+
+import android.content.ContextWrapper
+import android.view.View
+import androidx.core.app.ActivityCompat.startActivityForResult
+
+import android.content.Intent
+import androidx.annotation.RequiresApi
+import android.R.attr.data
+
+import android.app.Activity
+
+
+
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,21 +57,34 @@ class MainActivity : AppCompatActivity() {
     private var cameraInfo: CameraInfo? = null
     private var linearZoom = 0f
     private var recording = false
+    var sdk = 0
+
+    protected val outputDirectory2: String by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            "${Environment.DIRECTORY_DCIM}/CameraXDemo/"
+        } else {
+            "${this.getExternalFilesDir(Environment.DIRECTORY_DCIM)}/CameraXDemo/"
+        }
+    }
 
 
 
 
+    @RequiresApi(Build.VERSION_CODES.R)
     @SuppressLint("RestrictedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+       sdk =  Integer.valueOf(android.os.Build.VERSION.SDK_INT);
+        Toast.makeText(this, "SDK : "+sdk, Toast.LENGTH_SHORT).show()
+
         if (allPermissionsGranted()) {
-         //   lifecycleScope.launch(Dispatchers.IO) {
+            lifecycleScope.launch(Dispatchers.IO) {
 
                 startCamera()
-         //   }
+            }
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 requestPermissions(
@@ -64,25 +99,44 @@ class MainActivity : AppCompatActivity() {
 
 
         binding.cameraCaptureButton.setOnClickListener {
-            if (recording) {
-                videoCapture?.stopRecording()
-                it.isSelected = false
-                recording = false
-            } else {
-               // lifecycleScope.launch (Dispatchers.IO) {
-                    recordVideo()
-               // }
 
-                it.isSelected = true
-                recording = true
+            if (sdk > 23){
+                if (recording) {
+                    videoCapture?.stopRecording()
+                    it.isSelected = false
+                    recording = false
+                } else {
+                    lifecycleScope.launch (Dispatchers.IO) {
+                        recordVideo()
+                    }
+
+                    it.isSelected = true
+                    recording = true
+                }
+            }else{
+
+                Toast.makeText(this@MainActivity, "Old Device!", Toast.LENGTH_SHORT).show()
+                val takeVideoIntent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
+                takeVideoIntent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 30)
+
+                startActivityForResult(this, takeVideoIntent, 101, null)
             }
+
+
         }
 
 
     }
 
 
-
+    override fun onActivityReenter(resultCode: Int, data: Intent?) {
+        super.onActivityReenter(resultCode, data)
+        if (resultCode == RESULT_OK && resultCode == 101) {
+            val result: String = attr.data.toString()
+            Toast.makeText(this, result, Toast.LENGTH_SHORT).show()
+            // ...
+        }
+    }
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -153,8 +207,10 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    @SuppressLint("RestrictedApi")
+
+@SuppressLint("RestrictedApi")
     private fun recordVideo() {
+
         val file = createFile(
             outputDirectory,
             FILENAME,
@@ -230,6 +286,7 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "CameraX"
         private const val FILENAME = "yyyy-MM-dd-HH-mm-ss-SSS"
         private const val VIDEO_EXTENSION = ".mp4"
+        private const val VIDEO_EXTENSION2 = ".MPEG4"
 
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
@@ -242,5 +299,11 @@ class MainActivity : AppCompatActivity() {
             )
     }
 
+
+    fun Context.mainExecutor(): Executor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        mainExecutor
+    } else {
+        MainExecutor()
+    }
 
 }
