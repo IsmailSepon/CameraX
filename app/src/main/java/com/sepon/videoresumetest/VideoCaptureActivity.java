@@ -134,8 +134,7 @@ public class VideoCaptureActivity extends AppCompatActivity {
 
     // When you have the request results
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
 
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         //

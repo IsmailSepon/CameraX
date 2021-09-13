@@ -1,18 +1,16 @@
 package com.sepon.videoresumetest
 
 import android.Manifest
+import android.R.attr
 import android.annotation.SuppressLint
-import android.content.ContentValues
-import android.content.ContentValues.TAG
-import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -24,35 +22,9 @@ import com.sepon.videoresumetest.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
-import java.nio.file.Files.createFile
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.Executor
 import java.util.concurrent.Executors
-import android.R
-import android.R.attr
-
-import android.content.ContextWrapper
-import android.view.View
-import androidx.core.app.ActivityCompat.startActivityForResult
-
-import android.content.Intent
-import androidx.annotation.RequiresApi
-import android.R.attr.data
-
-import android.app.Activity
-import android.net.Uri
-import android.widget.MediaController
-import android.widget.VideoView
-import android.content.pm.ActivityInfo
-
-import android.media.MediaRecorder
-
-
-
-
-
-
 
 
 class MainActivity : AppCompatActivity() {
@@ -67,8 +39,6 @@ class MainActivity : AppCompatActivity() {
     private var linearZoom = 0f
     private var recording = false
     var sdk = 0
-    private val VIDEO_CAPTURE = 101
-    var videoUri: Uri? = null
 
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -78,8 +48,13 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-       sdk =  Integer.valueOf(android.os.Build.VERSION.SDK_INT);
-        Toast.makeText(this, "SDK : "+sdk, Toast.LENGTH_SHORT).show()
+       sdk =  Integer.valueOf(Build.VERSION.SDK_INT)
+        if (sdk < 23){
+
+            val intent = Intent(this, VideoCaptureActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
 
         if (allPermissionsGranted()) {
             lifecycleScope.launch(Dispatchers.IO) {
@@ -96,34 +71,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         outputDirectory = getOutputDirectory()
-
-
-
         binding.cameraCaptureButton.setOnClickListener {
 
-            dispatchTakeVideoIntent()
-
-            if (sdk > 23){
-
-
-                if (recording) {
-                    videoCapture?.stopRecording()
-                    it.isSelected = false
-                    recording = false
-                } else {
-                    lifecycleScope.launch (Dispatchers.IO) {
-                        recordVideo()
-                    }
-
-                    it.isSelected = true
-                    recording = true
+            if (recording) {
+                videoCapture?.stopRecording()
+                it.isSelected = false
+                recording = false
+            } else {
+                lifecycleScope.launch (Dispatchers.IO) {
+                    recordVideo()
                 }
 
-            }else{
-
-                Toast.makeText(this@MainActivity, "Old Device!", Toast.LENGTH_SHORT).show()
-                val intent = Intent(this, VideoCaptureActivity::class.java)
-                startActivity(intent)
+                it.isSelected = true
+                recording = true
             }
 
 
@@ -133,29 +93,8 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun dispatchTakeVideoIntent() {
-
-    }
 
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode == Companion.REQUEST_VIDEO_CAPTURE && resultCode == RESULT_OK) {
-            Toast.makeText(this, "DOne", Toast.LENGTH_SHORT).show()
-//            val videoUri: Uri = intent.data
-//            videoView.setVideoURI(videoUri)
-        }
-    }
-
-
-//    override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent) {
-//        super.onActivityResult(requestCode, resultCode, intent)
-//        if (requestCode == REQUEST_VIDEO_CAPTURE && resultCode == RESULT_OK) {
-////            val videoUri: Uri = intent.data
-////            videoView.setVideoURI(videoUri)
-//        }
-//    }
 
     override fun onActivityReenter(resultCode: Int, data: Intent?) {
         super.onActivityReenter(resultCode, data)
@@ -313,35 +252,11 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    fun playbackRecordedVideo() {
-//        val mVideoView = findViewById<View>(R.id.video_view) as VideoView
-//        mVideoView.setVideoURI(videoUri)
-//        mVideoView.setMediaController(MediaController(this))
-//        mVideoView.requestFocus()
-//        mVideoView.start()
-    }
-
-    fun startRecordingVideo() {
-
-        if (packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-            val intent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
-            val mediaFile = File(
-                Environment.getExternalStorageDirectory().absolutePath + "/myvideo.mp4"
-            )
-            videoUri = Uri.fromFile(mediaFile)
-            intent.putExtra(MediaStore.EXTRA_OUTPUT, videoUri)
-            startActivityForResult(intent, VIDEO_CAPTURE)
-        } else {
-            Toast.makeText(this, "No camera on device", Toast.LENGTH_LONG).show()
-        }
-
-    }
 
     companion object {
         private const val TAG = "CameraX"
         private const val FILENAME = "yyyy-MM-dd-HH-mm-ss-SSS"
         private const val VIDEO_EXTENSION = ".mp4"
-        private const val VIDEO_EXTENSION2 = ".MPEG4"
 
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
@@ -353,7 +268,6 @@ class MainActivity : AppCompatActivity() {
                     .format(System.currentTimeMillis()) + extension
             )
 
-        const val REQUEST_VIDEO_CAPTURE = 1
     }
 
 
