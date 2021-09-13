@@ -103,27 +103,28 @@ class MainActivity : AppCompatActivity() {
 
             dispatchTakeVideoIntent()
 
-//            if (sdk > 23){
-//
-//
-//                if (recording) {
-//                    videoCapture?.stopRecording()
-//                    it.isSelected = false
-//                    recording = false
-//                } else {
-//                    lifecycleScope.launch (Dispatchers.IO) {
-//                        recordVideo()
-//                    }
-//
-//                    it.isSelected = true
-//                    recording = true
-//                }
-//
-//            }else{
-//
-//                Toast.makeText(this@MainActivity, "Old Device!", Toast.LENGTH_SHORT).show()
-//               startRecordingVideo()
-//            }
+            if (sdk > 23){
+
+
+                if (recording) {
+                    videoCapture?.stopRecording()
+                    it.isSelected = false
+                    recording = false
+                } else {
+                    lifecycleScope.launch (Dispatchers.IO) {
+                        recordVideo()
+                    }
+
+                    it.isSelected = true
+                    recording = true
+                }
+
+            }else{
+
+                Toast.makeText(this@MainActivity, "Old Device!", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this, VideoCaptureActivity::class.java)
+                startActivity(intent)
+            }
 
 
         }
@@ -134,14 +135,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun dispatchTakeVideoIntent() {
 
-
-
-
-//        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takeVideoIntent ->
-//            takeVideoIntent.resolveActivity(packageManager)?.also {
-//                startActivityForResult(takeVideoIntent, Companion.REQUEST_VIDEO_CAPTURE)
-//            }
-//        }
     }
 
 
