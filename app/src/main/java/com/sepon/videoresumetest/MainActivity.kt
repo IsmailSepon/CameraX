@@ -131,6 +131,7 @@ class MainActivity : AppCompatActivity() {
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         val cameraSelector = CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build()
+
         cameraProviderFuture.addListener({
             imagePreview = Preview.Builder().apply {
                 setTargetAspectRatio(AspectRatio.RATIO_16_9)
@@ -147,8 +148,6 @@ class MainActivity : AppCompatActivity() {
                 this,
                 cameraSelector,
                 imagePreview,
-                // imageAnalysis,
-                // imageCapture,
                 videoCapture
             )
             binding.previewView.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
