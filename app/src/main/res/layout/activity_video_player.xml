@@ -23,6 +23,8 @@
 
     </com.google.android.exoplayer2.ui.PlayerView>
 
+
+
 <!--    <com.google.android.exoplayer2.video.VideoDecoderGLSurfaceView-->
 <!--        android:id="@+id/idExoPlayerVIew"-->
 <!--        android:layout_width="match_parent"-->
